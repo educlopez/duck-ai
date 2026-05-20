@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_TARGET="${HOME}/.claude-work/skills"
+SKILLS_TARGET="${HOME}/.claude/skills"
 CLAUDE_DIR="${HOME}/.claude"
 PASS=0
 FAIL=0
