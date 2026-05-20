@@ -25,4 +25,4 @@
 |-------|-------|
 | Reusable across projects | `skills/` here |
 | Specific to one project | `.claude/commands/` inside that project's repo |
-| Personal preferences | `~/.claude-work/` (not tracked here) |
+| Personal preferences | `~/.claude/` (not tracked here) |

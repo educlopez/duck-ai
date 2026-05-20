@@ -32,10 +32,27 @@ git pull
 ./install.sh   # re-runs; symlinks update automatically
 ```
 
+## Skills
+
+| Skill | Trigger |
+|-------|---------|
+| `cinetic-security-setup` | Add Trivy + pnpm supply chain protection to Cinetic GitLab projects |
+| `gitlab-security-setup` | Generic GitLab dependency scanning (non-Cinetic projects) |
+| `lando-img-placeholder` | Static image placeholder for local Lando/PrestaShop dev |
+| `ps-demo-user` | Create demo user in PrestaShop 8 (Lando) |
+
+## Commands
+
+| Command | What |
+|---------|------|
+| `/lando` | Lando environment helpers |
+| `/ps-customer` | Create test customer in PrestaShop |
+| `/ps-url` | PrestaShop URL utilities |
+
 ## Structure
 
 ```
-skills/           Claude Code skills (symlinked to ~/.claude-work/skills/)
+skills/           Claude Code skills (symlinked to ~/.claude/skills/)
 claude/commands/  Slash commands (symlinked to ~/.claude/commands/)
 docs/             Notes on adding skills and commands
 ```
