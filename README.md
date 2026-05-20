@@ -12,61 +12,59 @@ Built for day-to-day work at **Cinetic** (soon Neven).
 
 ## Install
 
-### Option A — Go binary (recommended)
-
-Requires Go 1.22+.
-
 ```bash
-git clone git@github.com:educlopez/duck-ai.git
-cd duck-ai
-go build -o duck-ai .
-./duck-ai          # launches interactive TUI
+curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
 ```
 
-Or install to `$GOPATH/bin` for global access:
+Then:
 
 ```bash
-go install github.com/educlopez/duck-ai@latest
-duck-ai
+duck-ai update    # install Claude/Codex/OpenCode skills + commands
+duck-ai doctor    # verify installation
+duck-ai           # launch interactive TUI
 ```
 
-#### CLI flags
+Pin a specific version:
+
+```bash
+DUCK_AI_VERSION=v0.2.0 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
+```
+
+The installer downloads a pre-built binary from
+[GitHub Releases](https://github.com/educlopez/duck-ai/releases) and drops it
+into `~/.local/bin/duck-ai` (override with `DUCK_AI_INSTALL_DIR=/usr/local/bin`).
+Make sure `~/.local/bin` is on your `PATH`.
+
+### CLI
 
 ```bash
 duck-ai                        # interactive TUI
 duck-ai install                # same as above
 duck-ai install --agent claude # install only to claude (non-interactive)
 duck-ai install --all          # install to all detected agents (non-interactive)
+duck-ai update                 # re-link skills/commands
 duck-ai doctor                 # check symlink health per agent
+duck-ai registry               # list installed skills/commands
 duck-ai version                # print version
 ```
 
 The binary auto-detects installed agents (claude, agents, codex, opencode) and
-symlinks the appropriate skills/commands directories. Set `DUCK_AI_DIR` to
-override the repo root location.
+symlinks the appropriate skills/commands directories.
 
-### Option B — Bash fallback
+### From source
 
 ```bash
 git clone git@github.com:educlopez/duck-ai.git
 cd duck-ai
-chmod +x install.sh doctor.sh
-./install.sh
-```
-
-## Verify
-
-```bash
-duck-ai doctor   # Go binary
-# or
-./doctor.sh      # bash fallback
+go build -o duck-ai .
+./duck-ai update
 ```
 
 ## Update
 
 ```bash
-git pull
-duck-ai install   # re-runs; symlinks update automatically
+curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
+duck-ai update
 ```
 
 ## Skills
@@ -99,8 +97,8 @@ internal/
   tui/styles.go      Lipgloss styles + banner
 skills/              Claude Code skills (symlinked to ~/.claude/skills/)
 claude/commands/     Slash commands (symlinked to ~/.claude/commands/)
-install.sh           Bash fallback installer
-doctor.sh            Bash fallback doctor
+install.sh           Curl-pipe installer (downloads release binary)
+doctor.sh            Bash fallback doctor (pre-binary)
 docs/                Notes on adding skills and commands
 ```
 
