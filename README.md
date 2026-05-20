@@ -74,7 +74,6 @@ duck-ai install   # re-runs; symlinks update automatically
 | Skill | Trigger |
 |-------|---------|
 | `cinetic-security-setup` | Add Trivy + pnpm supply chain protection to Cinetic GitLab projects |
-| `gitlab-security-setup` | Generic GitLab dependency scanning (non-Cinetic projects) |
 | `lando-img-placeholder` | Static image placeholder for local Lando/PrestaShop dev |
 | `ps-demo-user` | Create demo user in PrestaShop 8 (Lando) |
 
