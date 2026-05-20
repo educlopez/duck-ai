@@ -1,3 +1,9 @@
+---
+name: lando
+description: Crear configuración Lando para PrestaShop
+version: "0.1.0"
+---
+
 # Crear configuración Lando para PrestaShop
 
 Genera la configuración `.lando.yml` y configura `app/config/parameters.php` para el proyecto PrestaShop actual.

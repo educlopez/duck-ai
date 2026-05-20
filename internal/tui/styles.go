@@ -6,6 +6,7 @@ var (
 	colorAccent  = lipgloss.Color("#7C3AED")
 	colorSuccess = lipgloss.Color("#10B981")
 	colorError   = lipgloss.Color("#EF4444")
+	colorWarning = lipgloss.Color("#F59E0B")
 	colorMuted   = lipgloss.Color("#6B7280")
 	colorWhite   = lipgloss.Color("#F9FAFB")
 
@@ -23,6 +24,10 @@ var (
 
 	styleError = lipgloss.NewStyle().
 			Foreground(colorError)
+
+	styleWarning = lipgloss.NewStyle().
+			Foreground(colorWarning).
+			Bold(true)
 
 	styleMuted = lipgloss.NewStyle().
 			Foreground(colorMuted)
@@ -43,9 +48,17 @@ var (
 			Padding(1, 2).
 			MarginTop(1)
 
+	styleAgentBox = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorMuted).
+			Padding(0, 2).
+			MarginTop(1)
+
 	styleKey = lipgloss.NewStyle().
 			Foreground(colorMuted)
 )
+
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 const banner = `
  ██████╗ ██╗   ██╗ ██████╗██╗  ██╗      █████╗ ██╗

@@ -8,7 +8,11 @@ import (
 	"github.com/educlopez/duck-ai/cmd"
 )
 
-const version = "0.1.0"
+// version is the duck-ai release version.
+// "dev" is overridden at build time by goreleaser via:
+//
+//	-ldflags "-X main.version={{.Version}}"
+var version = "dev"
 
 func main() {
 	repoRoot := repoRootFromEnvOrBinary()
@@ -31,6 +35,28 @@ func main() {
 	switch args[0] {
 	case "doctor":
 		if err := cmd.RunDoctor(repoRoot); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "update":
+		uargs, err := cmd.ParseUpdateArgs(args[1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := cmd.RunUpdate(repoRoot, uargs); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "registry":
+		rargs, err := cmd.ParseRegistryArgs(args[1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := cmd.RunRegistry(repoRoot, rargs); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -111,7 +137,16 @@ Usage:
   duck-ai install                Launch interactive TUI installer
   duck-ai install --agent NAME   Install only to NAME (claude|agents|codex|opencode)
   duck-ai install --all          Install to all detected agents non-interactively
+  duck-ai update                 Re-link skills/commands, backing up any conflicting files
+  duck-ai update --dry-run       Show what update would change without touching disk
+  duck-ai update --agent NAME    Update only NAME
+  duck-ai update --yes           Skip confirmation prompts
+  duck-ai update --list-backups  List backup batches under ~/.duck-ai/backups
+  duck-ai update --restore TS    Restore files from backup TS (full stamp or unique prefix)
   duck-ai doctor                 Check symlink health per detected agent
+  duck-ai registry               List skills/commands with versions per agent
+  duck-ai registry --source      List source entries from the repo
+  duck-ai registry --json        Emit machine-readable JSON
   duck-ai version                Print version
 
 Environment:

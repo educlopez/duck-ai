@@ -1,3 +1,9 @@
+---
+name: ps-demo-user
+description: ps-demo-user — Usuario demo PrestaShop 8 (Lando)
+version: "0.1.0"
+---
+
 # ps-demo-user — Usuario demo PrestaShop 8 (Lando)
 
 Crea un cliente de prueba con historial completo para testear la UI del panel de usuario.

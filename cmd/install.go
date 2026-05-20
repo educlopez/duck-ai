@@ -10,7 +10,6 @@ import (
 	"github.com/educlopez/duck-ai/internal/tui"
 )
 
-// RunInstallTUI launches the interactive TUI installer.
 func RunInstallTUI(repoRoot string) error {
 	m := tui.New(repoRoot)
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -18,23 +17,18 @@ func RunInstallTUI(repoRoot string) error {
 	return err
 }
 
-// RunInstallAgent installs to a single named agent non-interactively.
-func RunInstallAgent(repoRoot, agentName string) error {
-	allAgents := agents.All()
-	var target *agents.Agent
-	for i, a := range allAgents {
-		if a.Name == agentName {
-			target = &allAgents[i]
-			break
-		}
+func RunInstallAgent(repoRoot, agentID string) error {
+	a, ok := agents.ByID(agentID)
+	if !ok {
+		return fmt.Errorf("unknown agent %q (supported: claude, codex, opencode, agents)", agentID)
 	}
-	if target == nil {
-		return fmt.Errorf("unknown agent %q (supported: claude, agents, codex, opencode)", agentName)
+	if !a.Detect() {
+		fmt.Fprintf(os.Stderr, "agent %q not detected on this system\n", a.ID())
+		return nil
 	}
-	return installToAgents(repoRoot, []agents.Agent{*target})
+	return installToAgents(repoRoot, []agents.Adapter{a})
 }
 
-// RunInstallAll installs to all detected agents non-interactively.
 func RunInstallAll(repoRoot string) error {
 	detected := agents.Detected()
 	if len(detected) == 0 {
@@ -44,7 +38,7 @@ func RunInstallAll(repoRoot string) error {
 	return installToAgents(repoRoot, detected)
 }
 
-func installToAgents(repoRoot string, agentList []agents.Agent) error {
+func installToAgents(repoRoot string, adapters []agents.Adapter) error {
 	allSkills, err := skills.DiscoverSkills(repoRoot)
 	if err != nil {
 		return err
@@ -56,27 +50,38 @@ func installToAgents(repoRoot string, agentList []agents.Agent) error {
 
 	linked, already, errored, skipped := 0, 0, 0, 0
 
-	for _, agent := range agentList {
-		fmt.Printf("\n  Agent: %s\n", agent.Name)
+	for _, a := range adapters {
+		fmt.Printf("\n  Agent: %s\n", a.ID())
 
-		for _, skill := range allSkills {
-			r := skills.Link(agent.Name, skill, agent.SkillsDir)
-			printResult(r)
-			switch r.Status {
-			case "linked":
-				linked++
-			case "already_linked":
-				already++
-			case "error":
-				errored++
-			case "skipped":
-				skipped++
+		if !a.Detect() {
+			fmt.Printf("    -  not detected, skipping\n")
+			continue
+		}
+
+		skillsDir := a.SkillsDir()
+		if skillsDir == "" {
+			fmt.Printf("    -  no skills dir resolved, skipping\n")
+		} else {
+			for _, sk := range allSkills {
+				r := skills.Link(a.ID(), sk, skillsDir)
+				printResult(r)
+				switch r.Status {
+				case "linked":
+					linked++
+				case "already_linked":
+					already++
+				case "error":
+					errored++
+				case "skipped":
+					skipped++
+				}
 			}
 		}
 
-		if agent.CommandsDir != "" {
-			for _, cmd := range allCommands {
-				r := skills.Link(agent.Name, cmd, agent.CommandsDir)
+		commandsDir := a.CommandsDir()
+		if commandsDir != "" {
+			for _, c := range allCommands {
+				r := skills.Link(a.ID(), c, commandsDir)
 				printResult(r)
 				switch r.Status {
 				case "linked":

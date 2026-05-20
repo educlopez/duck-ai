@@ -1,3 +1,9 @@
+---
+name: ps-url
+description: Actualizar shop_url de PrestaShop para Lando
+version: "0.1.0"
+---
+
 # Actualizar shop_url de PrestaShop para Lando
 
 Actualiza la tabla `shop_url` de PrestaShop para que use la URL de Lando en lugar de la URL de producción.

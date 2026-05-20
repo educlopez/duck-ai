@@ -7,6 +7,7 @@ description: >
   to add dependency scanning, vulnerability alerts, security setup, Trivy, pnpm
   supply chain protection, or wants email reports of vulnerabilities. Do NOT use
   for GitHub-hosted projects, personal projects, or PrestaShop (ps8-paudiet).
+version: "0.1.0"
 ---
 
 # Cinetic Security Setup

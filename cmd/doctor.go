@@ -3,72 +3,120 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/educlopez/duck-ai/internal/agents"
-	"github.com/educlopez/duck-ai/internal/skills"
 )
 
-// RunDoctor checks all symlinks per detected agent and reports status.
 func RunDoctor(repoRoot string) error {
-	allSkills, err := skills.DiscoverSkills(repoRoot)
+	absRepo, err := filepath.Abs(repoRoot)
 	if err != nil {
-		return err
-	}
-	allCommands, err := skills.DiscoverCommands(repoRoot)
-	if err != nil {
-		return err
+		absRepo = repoRoot
 	}
 
-	detected := agents.Detected()
-	if len(detected) == 0 {
-		fmt.Fprintln(os.Stderr, "No agents detected.")
-		return nil
-	}
+	for _, a := range agents.All() {
+		detected := a.Detect()
+		skillsDir := a.SkillsDir()
+		commandsDir := a.CommandsDir()
 
-	hasIssue := false
+		fmt.Printf("\n  %s (%s)\n", a.DisplayName(), a.ID())
+		fmt.Printf("    detected:     %s\n", yesNo(detected))
+		fmt.Printf("    skills dir:   %s\n", displayPath(skillsDir))
+		fmt.Printf("    commands dir: %s\n", displayPath(commandsDir))
 
-	for _, agent := range detected {
-		fmt.Printf("\n  Agent: %s\n", agent.Name)
-
-		for _, skill := range allSkills {
-			status := skills.CheckLink(agent.SkillsDir, skill.Name)
-			printDoctorStatus(skill.Name, status)
-			if status != "ok" {
-				hasIssue = true
-			}
+		if !detected {
+			continue
 		}
 
-		if agent.CommandsDir != "" {
-			for _, cmd := range allCommands {
-				status := skills.CheckLink(agent.CommandsDir, cmd.Name)
-				printDoctorStatus(cmd.Name, status)
-				if status != "ok" {
-					hasIssue = true
-				}
+		skillsManaged, skillsUnmanaged := scanDir(skillsDir, absRepo)
+		commandsManaged, commandsUnmanaged := scanDir(commandsDir, absRepo)
+		managed := skillsManaged + commandsManaged
+		fmt.Printf("    managed:      %d duck-ai symlinks\n", managed)
+
+		unmanaged := append([]driftEntry{}, skillsUnmanaged...)
+		unmanaged = append(unmanaged, commandsUnmanaged...)
+		if len(unmanaged) > 0 {
+			fmt.Printf("    unmanaged:    %d entries (not managed by duck-ai)\n", len(unmanaged))
+			for _, u := range unmanaged {
+				fmt.Printf("      - %s (%s)\n", u.relPath, u.kind)
 			}
+			fmt.Printf("    hint: run `duck-ai update` to absorb colliding entries; non-colliding ones will be left alone.\n")
 		}
 	}
 
-	fmt.Println()
-	if hasIssue {
-		fmt.Println("  Issues found. Run `duck-ai install` to fix.")
-	} else {
-		fmt.Println("  All symlinks OK.")
-	}
 	return nil
 }
 
-func printDoctorStatus(name, status string) {
-	switch status {
-	case "ok":
-		fmt.Printf("    ✓  %s\n", name)
-	case "missing":
-		fmt.Printf("    ✗  %s (missing — not installed)\n", name)
-	case "broken":
-		fmt.Printf("    ✗  %s (broken symlink)\n", name)
-	case "not_symlink":
-		fmt.Printf("    ⚠  %s (exists but is not a symlink)\n", name)
-	default:
-		fmt.Printf("    ?  %s (%s)\n", name, status)
+func yesNo(b bool) string {
+	if b {
+		return "y"
 	}
+	return "n"
+}
+
+func displayPath(p string) string {
+	if p == "" {
+		return "(none)"
+	}
+	return p
+}
+
+// driftEntry describes a single unmanaged file or directory found in an agent
+// directory. relPath is rendered relative to the agent dir's parent so output
+// is unambiguous (e.g. "skills/foo" rather than just "foo").
+type driftEntry struct {
+	relPath string
+	kind    string // "file" or "dir"
+}
+
+// scanDir walks dir one level deep and returns:
+//   - managed: count of symlinks pointing into repoRoot
+//   - unmanaged: entries that are NOT such symlinks (real files/dirs, or
+//     symlinks pointing elsewhere)
+//
+// Hidden entries (names starting with ".") are skipped to match what install
+// currently ignores by convention (.DS_Store and other dotfiles).
+func scanDir(dir, repoRoot string) (managed int, unmanaged []driftEntry) {
+	if dir == "" {
+		return 0, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, nil
+	}
+	prefix := filepath.Base(dir) // "skills" or "commands"
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		full := filepath.Join(dir, name)
+		info, err := os.Lstat(full)
+		if err != nil {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(full)
+			if err == nil {
+				absTarget := target
+				if !filepath.IsAbs(absTarget) {
+					absTarget = filepath.Join(filepath.Dir(full), absTarget)
+				}
+				if strings.HasPrefix(absTarget, repoRoot+string(filepath.Separator)) || absTarget == repoRoot {
+					managed++
+					continue
+				}
+			}
+		}
+		kind := "file"
+		if info.IsDir() {
+			kind = "dir"
+		}
+		unmanaged = append(unmanaged, driftEntry{
+			relPath: filepath.Join(prefix, name),
+			kind:    kind,
+		})
+	}
+	return managed, unmanaged
 }

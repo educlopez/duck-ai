@@ -1,6 +1,7 @@
 ---
 name: lando-img-placeholder
 description: Sets up a static image placeholder for local Lando PrestaShop development so broken/missing product images show a nice placeholder instead of broken icons. Use this skill when the user says "placeholder de imagenes en lando", "lando image placeholder", "imagenes rotas en lando", "broken images in lando", or wants to avoid downloading hundreds of product images for local development. Trigger proactively whenever the user is working on a Lando PrestaShop project and mentions broken images or missing product photos.
+version: "0.1.0"
 ---
 
 # Lando Image Placeholder for PrestaShop

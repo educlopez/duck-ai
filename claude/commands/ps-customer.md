@@ -1,3 +1,9 @@
+---
+name: ps-customer
+description: Crear cliente de prueba en PrestaShop
+version: "0.1.0"
+---
+
 # Crear cliente de prueba en PrestaShop
 
 Crea un cliente de prueba completo en PrestaShop con dirección y pedidos de ejemplo.
