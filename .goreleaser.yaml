@@ -14,6 +14,7 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
@@ -23,6 +24,10 @@ builds:
 archives:
   - formats:
       - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
@@ -56,3 +61,26 @@ changelog:
 release:
   draft: false
   prerelease: auto
+
+brews:
+  - repository:
+      owner: educlopez
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    name: duck-ai
+    homepage: "https://github.com/educlopez/duck-ai"
+    description: "Multi-agent skill, command and agent installer for Claude Code, Codex, OpenCode and generic agents."
+    license: "MIT"
+    commit_msg_template: "chore: update duck-ai formula to {{ .Tag }}"
+
+scoops:
+  - repository:
+      owner: educlopez
+      name: scoop-bucket
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    name: duck-ai
+    homepage: "https://github.com/educlopez/duck-ai"
+    description: "Multi-agent skill, command and agent installer for Claude Code, Codex, OpenCode and generic agents."
+    license: MIT
+    commit_msg_template: "chore: update duck-ai to {{ .Tag }}"

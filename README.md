@@ -12,17 +12,20 @@ Built for day-to-day work at **Cinetic** (soon Neven).
 
 ## Install
 
+### macOS / Linux — Homebrew
+
+```bash
+brew tap educlopez/tap
+brew install duck-ai
+```
+
+### macOS / Linux — curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
 ```
 
-Then:
-
-```bash
-duck-ai update    # install Claude/Codex/OpenCode skills + commands
-duck-ai doctor    # verify installation
-duck-ai           # launch interactive TUI
-```
+Drops the binary into `~/.local/bin/duck-ai` (override with `DUCK_AI_INSTALL_DIR=/usr/local/bin`). Make sure `~/.local/bin` is on your `PATH`.
 
 Pin a specific version:
 
@@ -30,10 +33,20 @@ Pin a specific version:
 DUCK_AI_VERSION=v0.2.0 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
 ```
 
-The installer downloads a pre-built binary from
-[GitHub Releases](https://github.com/educlopez/duck-ai/releases) and drops it
-into `~/.local/bin/duck-ai` (override with `DUCK_AI_INSTALL_DIR=/usr/local/bin`).
-Make sure `~/.local/bin` is on your `PATH`.
+### Windows — Scoop
+
+```powershell
+scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
+scoop install duck-ai
+```
+
+### After install
+
+```bash
+duck-ai update    # install Claude/Codex/OpenCode skills + commands
+duck-ai doctor    # verify installation
+duck-ai           # launch interactive TUI
+```
 
 ### CLI
 
