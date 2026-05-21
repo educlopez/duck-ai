@@ -12,22 +12,13 @@ Built for day-to-day work at **Cinetic** (soon Neven).
 
 ## Install
 
-> **duck-ai is a private repo.** You need GitHub auth on the machine before any of the install paths below will work. Once per machine:
+> **duck-ai is a private repo.** Every machine needs GitHub auth before installing. One-time:
 > ```bash
-> gh auth login                                    # macOS / Linux
-> # then, for Homebrew to pass the token on tarball downloads:
-> export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # add to ~/.zshrc to persist
+> gh auth login        # follow the prompts, choose HTTPS, authenticate via browser
 > ```
-> The curl-pipe installer picks up `gh auth token` automatically. Scoop on Windows relies on Git Credential Manager (set up by `gh auth login` or by signing into GitHub Desktop).
+> The installer picks up the token from `gh auth token` automatically.
 
-### macOS / Linux — Homebrew
-
-```bash
-brew tap educlopez/tap
-brew install duck-ai
-```
-
-### macOS / Linux — curl
+### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
@@ -41,12 +32,22 @@ Pin a specific version:
 DUCK_AI_VERSION=v0.2.0 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
 ```
 
-### Windows — Scoop
+### Windows
 
+The installer is bash-only. Use one of:
+
+**Option A — `gh release download`** (recommended):
 ```powershell
-scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
-scoop install duck-ai
+gh release download v0.2.0 --repo educlopez/duck-ai --pattern "duck-ai_0.2.0_windows_amd64.zip"
+Expand-Archive duck-ai_0.2.0_windows_amd64.zip -DestinationPath .
+# Move duck-ai.exe somewhere on your PATH (e.g. C:\Users\<you>\bin\)
 ```
+
+**Option B — WSL / Git Bash** — run the macOS / Linux install command above.
+
+### Why not Homebrew / Scoop?
+
+Both publish formulas that point at a public release URL, but neither tool authenticates that download. With a private repo the tarball returns 404 even with `HOMEBREW_GITHUB_API_TOKEN` set, because brew only uses that token for the API, not for `releases/download/...`. The curl-pipe installer does both auth steps correctly, so that's the canonical path while duck-ai stays private.
 
 ### After install
 
@@ -83,17 +84,14 @@ go build -o duck-ai .
 
 ## Update
 
-Upgrade the binary, then re-sync skills/commands:
+Re-run the curl-pipe installer to upgrade the binary, then re-link skills:
 
 ```bash
-brew upgrade duck-ai       # macOS / Linux (Homebrew)
-# or
-scoop update duck-ai       # Windows
-# or re-run the curl-pipe installer:
 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
-
 duck-ai update             # re-link skills/commands (backs up conflicts)
 ```
+
+Windows: run `gh release download` again for the latest tag and replace `duck-ai.exe`.
 
 `duck-ai update --list-backups` and `duck-ai update --restore <ts>` recover prior state if anything went sideways.
 
