@@ -12,6 +12,14 @@ Built for day-to-day work at **Cinetic** (soon Neven).
 
 ## Install
 
+> **duck-ai is a private repo.** You need GitHub auth on the machine before any of the install paths below will work. Once per machine:
+> ```bash
+> gh auth login                                    # macOS / Linux
+> # then, for Homebrew to pass the token on tarball downloads:
+> export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # add to ~/.zshrc to persist
+> ```
+> The curl-pipe installer picks up `gh auth token` automatically. Scoop on Windows relies on Git Credential Manager (set up by `gh auth login` or by signing into GitHub Desktop).
+
 ### macOS / Linux — Homebrew
 
 ```bash

@@ -19,6 +19,32 @@ GITHUB_OWNER="educlopez"
 GITHUB_REPO="duck-ai"
 BINARY_NAME="duck-ai"
 
+# Try to resolve a GitHub token for private-repo downloads.
+# Order: explicit GITHUB_TOKEN env, GH_TOKEN env, or `gh auth token` if available.
+resolve_token() {
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        printf '%s' "$GITHUB_TOKEN"
+        return
+    fi
+    if [ -n "${GH_TOKEN:-}" ]; then
+        printf '%s' "$GH_TOKEN"
+        return
+    fi
+    if command -v gh >/dev/null 2>&1; then
+        gh auth token 2>/dev/null || true
+    fi
+}
+GH_AUTH_TOKEN="$(resolve_token)"
+
+# curl with auth header when we have a token (private repo support).
+curl_auth() {
+    if [ -n "$GH_AUTH_TOKEN" ]; then
+        curl -H "Authorization: Bearer $GH_AUTH_TOKEN" "$@"
+    else
+        curl "$@"
+    fi
+}
+
 # ============================================================================
 # Color support
 # ============================================================================
@@ -102,11 +128,14 @@ resolve_version() {
         info "Fetching latest release from GitHub..."
         local url="https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest"
         local response http_code body
-        response="$(curl -sL -w '\n%{http_code}' "$url")" \
+        response="$(curl_auth -sL -w '\n%{http_code}' "$url")" \
             || fatal "Failed to query GitHub API"
         http_code="$(printf '%s\n' "$response" | tail -n 1)"
         body="$(printf '%s\n' "$response" | sed '$d')"
 
+        if [ "$http_code" = "404" ] && [ -z "$GH_AUTH_TOKEN" ]; then
+            fatal "GitHub API returned 404 — duck-ai is private. Run \`gh auth login\` first, or export GITHUB_TOKEN before piping to bash."
+        fi
         if [ "$http_code" != "200" ]; then
             fatal "GitHub API returned HTTP $http_code. Rate limited? Try again or pin DUCK_AI_VERSION."
         fi
@@ -141,7 +170,10 @@ download_and_install() {
     trap "rm -rf '$tmpdir'" EXIT
 
     info "Downloading ${archive_name}..."
-    if ! curl -sfL -o "${tmpdir}/${archive_name}" "$download_url"; then
+    if ! curl_auth -sfL -o "${tmpdir}/${archive_name}" "$download_url"; then
+        if [ -z "$GH_AUTH_TOKEN" ]; then
+            fatal "Failed to download (likely auth — duck-ai is private):\n  ${download_url}\n\nRun \`gh auth login\` first, or export GITHUB_TOKEN before retrying."
+        fi
         fatal "Failed to download:\n  ${download_url}\n\nDoes a release exist for ${VERSION_TAG} on ${OS}/${ARCH}?"
     fi
 
@@ -155,7 +187,7 @@ download_and_install() {
 
     # Verify checksum — fail closed.
     info "Verifying checksum..."
-    if ! curl -sfL -o "${tmpdir}/checksums.txt" "$checksums_url"; then
+    if ! curl_auth -sfL -o "${tmpdir}/checksums.txt" "$checksums_url"; then
         fatal "Could not download checksums.txt from:\n  ${checksums_url}"
     fi
 
