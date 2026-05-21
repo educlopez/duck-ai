@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"time"
@@ -8,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/educlopez/duck-ai/internal/agents"
+	"github.com/educlopez/duck-ai/internal/reports"
 	"github.com/educlopez/duck-ai/internal/skills"
 	"github.com/educlopez/duck-ai/internal/updater"
 )
@@ -26,6 +28,8 @@ const (
 	screenUpdateNoop
 	screenUpdating
 	screenUpdateDone
+	screenDoctor
+	screenRegistry
 )
 
 // Model is the bubbletea model for the installer TUI.
@@ -59,6 +63,14 @@ type Model struct {
 	updateErr     error
 	spinnerFrame  int
 	spinnerActive bool
+
+	// Doctor / Registry scroll screens. scrollOutput holds the captured
+	// stdout from the underlying report; scrollOffset is the top line
+	// shown in the viewport. scrollErr is non-nil if the report failed.
+	scrollOutput string
+	scrollOffset int
+	scrollErr    error
+	scrollTitle  string
 
 	// Terminal size
 	width  int
@@ -176,6 +188,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleUpdateConfirmKey(msg)
 	case screenUpdateNoop:
 		return m.handleUpdateNoopKey(msg)
+	case screenDoctor, screenRegistry:
+		return m.handleScrollKey(msg)
 	case screenDone:
 		if msg.String() == "q" || msg.String() == "ctrl+c" || msg.String() == "enter" {
 			return m, tea.Quit
@@ -194,14 +208,51 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleScrollKey handles input for the Doctor and Registry result screens.
+// j/down and k/up scroll one line; enter and esc return to the welcome menu;
+// q and ctrl+c quit.
+func (m Model) handleScrollKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "enter", "esc":
+		return m.resetToWelcome(), nil
+	case "down", "j":
+		lines := scrollLineCount(m.scrollOutput)
+		if m.scrollOffset < lines-1 {
+			m.scrollOffset++
+		}
+	case "up", "k":
+		if m.scrollOffset > 0 {
+			m.scrollOffset--
+		}
+	case "g", "home":
+		m.scrollOffset = 0
+	case "G", "end":
+		lines := scrollLineCount(m.scrollOutput)
+		if lines > 0 {
+			m.scrollOffset = lines - 1
+		}
+	}
+	return m, nil
+}
+
+func scrollLineCount(s string) int {
+	if s == "" {
+		return 0
+	}
+	return strings.Count(s, "\n") + 1
+}
+
 func (m Model) handleWelcomeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	maxCursor := len(welcomeOptions()) - 1
 	switch msg.String() {
 	case "up", "k":
 		if m.welcomeCursor > 0 {
 			m.welcomeCursor--
 		}
 	case "down", "j":
-		if m.welcomeCursor < 2 {
+		if m.welcomeCursor < maxCursor {
 			m.welcomeCursor++
 		}
 	case "enter", " ":
@@ -214,12 +265,43 @@ func (m Model) handleWelcomeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spinnerFrame = 0
 			return m, tea.Batch(m.runUpdatePlan(), tickSpinner())
 		case 2:
+			return m.enterDoctor(), nil
+		case 3:
+			return m.enterRegistry(), nil
+		case 4:
 			return m, tea.Quit
 		}
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	}
 	return m, nil
+}
+
+// enterDoctor captures the doctor report into m.scrollOutput and switches to
+// screenDoctor. Capture is synchronous because the report is cheap (file
+// stat'ing under ~/.claude etc) — no goroutine / tea.Cmd needed.
+func (m Model) enterDoctor() Model {
+	var buf bytes.Buffer
+	err := reports.Doctor(&buf, m.repoRoot)
+	m.scrollOutput = buf.String()
+	m.scrollOffset = 0
+	m.scrollErr = err
+	m.scrollTitle = "Doctor — symlink health per agent"
+	m.screen = screenDoctor
+	return m
+}
+
+// enterRegistry captures the registry report into m.scrollOutput and switches
+// to screenRegistry. Uses default args (managed entries only, text output).
+func (m Model) enterRegistry() Model {
+	var buf bytes.Buffer
+	err := reports.Registry(&buf, m.repoRoot, reports.RegistryArgs{})
+	m.scrollOutput = buf.String()
+	m.scrollOffset = 0
+	m.scrollErr = err
+	m.scrollTitle = "Registry — managed skills + versions"
+	m.screen = screenRegistry
+	return m
 }
 
 func (m Model) handleUpdateConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -255,6 +337,10 @@ func (m Model) resetToWelcome() Model {
 	m.updateErr = nil
 	m.spinnerActive = false
 	m.spinnerFrame = 0
+	m.scrollOutput = ""
+	m.scrollOffset = 0
+	m.scrollErr = nil
+	m.scrollTitle = ""
 	return m
 }
 
@@ -444,6 +530,8 @@ func (m Model) View() string {
 		b.WriteString(m.viewUpdating())
 	case screenUpdateDone:
 		b.WriteString(m.viewUpdateDone())
+	case screenDoctor, screenRegistry:
+		b.WriteString(m.viewScrollReport())
 	}
 
 	b.WriteString("\n" + styleKey.Render("  ctrl+c / q  quit"))
@@ -681,4 +769,59 @@ func backupStamp(dir string) string {
 		return dir
 	}
 	return dir[idx+1:]
+}
+
+// scrollViewportHeight is the number of body lines rendered inside the
+// Doctor / Registry result panels before scrolling kicks in. Kept small
+// enough to fit a typical 24-line terminal alongside header + footer.
+const scrollViewportHeight = 16
+
+// viewScrollReport renders the captured output for the Doctor or Registry
+// screen inside PanelStyle, with a simple offset-based scroll window.
+func (m Model) viewScrollReport() string {
+	var b strings.Builder
+
+	b.WriteString(styleAccent.Render("  " + m.scrollTitle) + "\n\n")
+
+	if m.scrollErr != nil {
+		b.WriteString(styleError.Render(fmt.Sprintf("  error: %v", m.scrollErr)) + "\n")
+		b.WriteString("\n" + styleKey.Render("  enter / esc  back to menu  •  q  quit"))
+		return b.String()
+	}
+
+	body := strings.TrimRight(m.scrollOutput, "\n")
+	if body == "" {
+		b.WriteString(styleMuted.Render("  (no output)") + "\n")
+		b.WriteString("\n" + styleKey.Render("  enter / esc  back to menu  •  q  quit"))
+		return b.String()
+	}
+
+	lines := strings.Split(body, "\n")
+	total := len(lines)
+
+	start := m.scrollOffset
+	if start < 0 {
+		start = 0
+	}
+	if start >= total {
+		start = total - 1
+	}
+	end := start + scrollViewportHeight
+	if end > total {
+		end = total
+	}
+
+	visible := strings.Join(lines[start:end], "\n")
+	b.WriteString(PanelStyle.Render(visible) + "\n")
+
+	if total > scrollViewportHeight {
+		b.WriteString(styleMuted.Render(
+			fmt.Sprintf("  lines %d-%d of %d", start+1, end, total),
+		) + "\n")
+		b.WriteString("\n" + styleKey.Render("  ↑/↓ scroll  •  g/G top/bottom  •  enter / esc  back  •  q  quit"))
+	} else {
+		b.WriteString("\n" + styleKey.Render("  enter / esc  back to menu  •  q  quit"))
+	}
+
+	return b.String()
 }

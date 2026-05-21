@@ -7,6 +7,8 @@ func welcomeOptions() []string {
 	return []string{
 		"Install skills & commands",
 		"Update (refresh symlinks, backup conflicts)",
+		"Doctor (verify symlink health per agent)",
+		"Registry (list managed skills + versions)",
 		"Quit",
 	}
 }
