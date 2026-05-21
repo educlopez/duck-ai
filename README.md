@@ -75,10 +75,19 @@ go build -o duck-ai .
 
 ## Update
 
+Upgrade the binary, then re-sync skills/commands:
+
 ```bash
+brew upgrade duck-ai       # macOS / Linux (Homebrew)
+# or
+scoop update duck-ai       # Windows
+# or re-run the curl-pipe installer:
 curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh | bash
-duck-ai update
+
+duck-ai update             # re-link skills/commands (backs up conflicts)
 ```
+
+`duck-ai update --list-backups` and `duck-ai update --restore <ts>` recover prior state if anything went sideways.
 
 ## Skills
 
@@ -99,20 +108,38 @@ duck-ai update
 ## Structure
 
 ```
-main.go              Entry point + CLI routing
+main.go                       Entry point + CLI routing
 cmd/
-  install.go         Install command (TUI + non-interactive modes)
-  doctor.go          Doctor command
+  install.go                  Install (TUI + non-interactive modes)
+  update.go                   Update with backup, restore, list-backups
+  doctor.go                   Doctor (thin delegate to internal/reports)
+  registry.go                 Registry (thin delegate to internal/reports)
 internal/
-  agents/agents.go   Agent definitions + detection logic
-  skills/skills.go   Skill discovery + symlink operations
-  tui/model.go       Bubbletea TUI model (5-screen flow)
-  tui/styles.go      Lipgloss styles + banner
-skills/              Claude Code skills (symlinked to ~/.claude/skills/)
-claude/commands/     Slash commands (symlinked to ~/.claude/commands/)
-install.sh           Curl-pipe installer (downloads release binary)
-doctor.sh            Bash fallback doctor (pre-binary)
-docs/                Notes on adding skills and commands
+  agents/
+    adapter.go                Multi-agent Adapter interface
+    claude.go codex.go        Per-agent implementations
+    opencode.go generic.go
+    registry.go               All() / ByID() factory
+  backup/backup.go            Snapshot/Restore + manifest, keep-latest-5 GC
+  updater/updater.go          Pure Run(Options) → Report (CLI + TUI share it)
+  reports/                    Writer-based doctor + registry renderers
+  skillregistry/registry.go   Parse SKILL.md / command frontmatter
+  skills/skills.go            Symlink helpers
+  tui/
+    model.go                  Bubbletea model + screen state machine
+    welcome.go                Welcome screen calqued from gentle-ai
+    logo.go                   Braille-art duck + yellow gradient
+    styles.go                 Lipgloss palette (Rose Pine + duck accents)
+skills/                       Claude Code skills (symlinked to ~/.claude/skills/)
+claude/commands/              Slash commands (symlinked to ~/.claude/commands/)
+.github/workflows/
+  release.yml                 Tag push → goreleaser → binaries + brew + scoop
+  ci.yml                      go vet + go build on push/PR
+  pr-check.yml                400-line PR review-budget check
+.goreleaser.yaml              Multi-platform build + brews/scoops publish
+install.sh                    Curl-pipe installer (downloads release binary)
+doctor.sh                     Bash dependency check (claude CLI, node, pnpm)
+docs/                         Notes on adding skills and commands
 ```
 
 ## Adding a skill
