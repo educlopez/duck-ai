@@ -10,8 +10,8 @@ import (
 	"github.com/educlopez/duck-ai/internal/tui"
 )
 
-func RunInstallTUI(repoRoot string) error {
-	m := tui.New(repoRoot)
+func RunInstallTUI(repoRoot, version string) error {
+	m := tui.New(repoRoot, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

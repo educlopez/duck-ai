@@ -32,6 +32,7 @@ const (
 type Model struct {
 	screen   screen
 	repoRoot string
+	version  string
 
 	// Welcome screen
 	welcomeCursor int
@@ -67,8 +68,9 @@ type Model struct {
 	err error
 }
 
-// New creates a fresh Model.
-func New(repoRoot string) Model {
+// New creates a fresh Model. version is shown in the welcome tagline; pass
+// an empty string to hide the version suffix.
+func New(repoRoot, version string) Model {
 	detected := agents.Detected()
 	agentSelected := make([]bool, len(detected))
 	for i := range agentSelected {
@@ -78,6 +80,7 @@ func New(repoRoot string) Model {
 	return Model{
 		screen:        screenWelcome,
 		repoRoot:      repoRoot,
+		version:       version,
 		allAgents:     detected,
 		agentSelected: agentSelected,
 	}
@@ -405,15 +408,24 @@ func (m Model) runInstall() tea.Cmd {
 // -- View --
 
 func (m Model) View() string {
+	// The welcome screen is fully self-contained (logo, tagline, menu,
+	// help footer) and wrapped in its own FrameStyle. Render it directly
+	// and skip the legacy header + footer that the other screens share.
+	if m.screen == screenWelcome {
+		return RenderWelcome(m.welcomeCursor, m.version)
+	}
+
 	var b strings.Builder
 
-	header := styleTitle.Render(banner)
-	b.WriteString(header + "\n")
-	b.WriteString(styleSubtitle.Render("  Personal Claude Code toolkit for Cinetic/Neven work") + "\n\n")
+	logo := RenderLogo()
+	tagline := Tagline(m.version)
+	header := lipgloss.JoinVertical(lipgloss.Center,
+		logo,
+		styleTitle.Render(tagline),
+	)
+	b.WriteString(header + "\n\n")
 
 	switch m.screen {
-	case screenWelcome:
-		b.WriteString(m.viewWelcome())
 	case screenAgents:
 		b.WriteString(m.viewAgents())
 	case screenSkills:
@@ -436,21 +448,6 @@ func (m Model) View() string {
 
 	b.WriteString("\n" + styleKey.Render("  ctrl+c / q  quit"))
 
-	return b.String()
-}
-
-func (m Model) viewWelcome() string {
-	var b strings.Builder
-	items := []string{"  Install skills & commands", "  Update (refresh symlinks, backup conflicts)", "  Quit"}
-	b.WriteString(styleAccent.Render("  What would you like to do?\n\n"))
-	for i, item := range items {
-		if i == m.welcomeCursor {
-			b.WriteString(styleCursor.Render("  ❯ ") + styleSelected.Render(item) + "\n")
-		} else {
-			b.WriteString(styleMuted.Render("    "+item) + "\n")
-		}
-	}
-	b.WriteString("\n" + styleKey.Render("  ↑/↓ navigate  •  enter select"))
 	return b.String()
 }
 

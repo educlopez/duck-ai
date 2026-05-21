@@ -25,7 +25,7 @@ func main() {
 		if len(args) > 0 {
 			installArgs = args[1:]
 		}
-		if err := handleInstall(repoRoot, installArgs); err != nil {
+		if err := handleInstall(repoRoot, installArgs, version); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -74,7 +74,7 @@ func main() {
 	}
 }
 
-func handleInstall(repoRoot string, args []string) error {
+func handleInstall(repoRoot string, args []string, version string) error {
 	// Parse flags
 	agentFlag := ""
 	allFlag := false
@@ -100,7 +100,7 @@ func handleInstall(repoRoot string, args []string) error {
 		return cmd.RunInstallAll(repoRoot)
 	}
 	// Default: TUI
-	return cmd.RunInstallTUI(repoRoot)
+	return cmd.RunInstallTUI(repoRoot, version)
 }
 
 // repoRootFromEnvOrBinary resolves the duck-ai repo root.
