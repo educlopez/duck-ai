@@ -12,12 +12,6 @@ Built for day-to-day work at **Cinetic** (soon Neven).
 
 ## Install
 
-> **duck-ai is a private repo.** Every machine needs GitHub auth before installing. One-time:
-> ```bash
-> gh auth login        # follow the prompts, choose HTTPS, authenticate via browser
-> ```
-> The installer picks up the token from `gh auth token` automatically.
-
 ### macOS / Linux
 
 ```bash
@@ -34,20 +28,13 @@ DUCK_AI_VERSION=v0.2.0 curl -fsSL https://raw.githubusercontent.com/educlopez/du
 
 ### Windows
 
-The installer is bash-only. Use one of:
+The installer is bash-only. Two options:
 
-**Option A — `gh release download`** (recommended):
-```powershell
-gh release download v0.2.0 --repo educlopez/duck-ai --pattern "duck-ai_0.2.0_windows_amd64.zip"
-Expand-Archive duck-ai_0.2.0_windows_amd64.zip -DestinationPath .
-# Move duck-ai.exe somewhere on your PATH (e.g. C:\Users\<you>\bin\)
-```
+**Option A — download the release zip directly**:
+
+Grab the latest zip from [Releases](https://github.com/educlopez/duck-ai/releases) (`duck-ai_<version>_windows_amd64.zip` or `_arm64.zip`), extract it, and move `duck-ai.exe` somewhere on your `PATH`.
 
 **Option B — WSL / Git Bash** — run the macOS / Linux install command above.
-
-### Why not Homebrew / Scoop?
-
-Both publish formulas that point at a public release URL, but neither tool authenticates that download. With a private repo the tarball returns 404 even with `HOMEBREW_GITHUB_API_TOKEN` set, because brew only uses that token for the API, not for `releases/download/...`. The curl-pipe installer does both auth steps correctly, so that's the canonical path while duck-ai stays private.
 
 ### After install
 
@@ -91,7 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/educlopez/duck-ai/main/install.sh |
 duck-ai update             # re-link skills/commands (backs up conflicts)
 ```
 
-Windows: run `gh release download` again for the latest tag and replace `duck-ai.exe`.
+Windows: download the latest zip from [Releases](https://github.com/educlopez/duck-ai/releases) and replace `duck-ai.exe`.
 
 `duck-ai update --list-backups` and `duck-ai update --restore <ts>` recover prior state if anything went sideways.
 
