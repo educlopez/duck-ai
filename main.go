@@ -15,7 +15,7 @@ import (
 var version = "dev"
 
 func main() {
-	repoRoot := repoRootFromEnvOrBinary()
+	repoRoot := repoRootFromEnvOrBinary(version)
 
 	args := os.Args[1:]
 
@@ -104,13 +104,19 @@ func handleInstall(repoRoot string, args []string, version string) error {
 }
 
 // repoRootFromEnvOrBinary resolves the duck-ai repo root.
-// Priority: DUCK_AI_DIR env var → directory of the running binary.
-func repoRootFromEnvOrBinary() string {
+//
+// Priority:
+//  1. DUCK_AI_DIR env var (explicit override)
+//  2. Walk up from the binary looking for a skills/ sibling (dev mode:
+//     running `go run .` or `./duck-ai` from the cloned repo)
+//  3. Materialize the embedded source tree into ~/.duck-ai/source/<version>/
+//     (release mode: binary installed via curl-pipe with no sibling repo)
+//  4. Fallback to cwd if all of the above fail
+func repoRootFromEnvOrBinary(version string) string {
 	if dir := os.Getenv("DUCK_AI_DIR"); dir != "" {
 		return dir
 	}
-	exe, err := os.Executable()
-	if err == nil {
+	if exe, err := os.Executable(); err == nil {
 		// Walk up from the binary looking for a skills/ directory.
 		dir := filepath.Dir(exe)
 		for {
@@ -124,7 +130,13 @@ func repoRootFromEnvOrBinary() string {
 			dir = parent
 		}
 	}
-	// Fallback: cwd
+	// No sibling repo — materialize the embedded source.
+	if dir, err := materializeEmbeddedSource(version); err == nil {
+		return dir
+	} else {
+		fmt.Fprintf(os.Stderr, "warning: could not materialize embedded source: %v\n", err)
+	}
+	// Last-resort fallback: cwd.
 	cwd, _ := os.Getwd()
 	return cwd
 }
