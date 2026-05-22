@@ -6,17 +6,21 @@ version: "0.1.0"
 
 # Lando Image Placeholder for PrestaShop
 
-Intercepts missing product image requests via Apache rewrite rules and serves a static placeholder image. No PHP scripts, no DB changes — pure Apache mod_rewrite.
+Intercepts missing product image requests and serves a static placeholder JPEG. Works for both Apache (lamp) and nginx (lemp) Lando recipes.
 
-## How it works
+## Step 0 — Detect recipe
 
-A custom Apache VirtualHost config intercepts image requests where the file doesn't exist on disk and rewrites them to a single placeholder JPEG. This covers all PrestaShop image URL patterns.
+Read `.lando.yml` and check `recipe:`:
+- `recipe: lamp` → follow **Apache path**
+- `recipe: lemp` → follow **nginx path**
 
-## Steps
+---
 
-### 1. Create the `.lando` directory and Apache config
+## Apache path (recipe: lamp)
 
-Create `.lando/apache-placeholder.conf` replacing `{project}` with the actual Lando project name (found in `.lando.yml` as the `name:` field, e.g. `vives-8`):
+### 1. Create `.lando/apache-placeholder.conf`
+
+Replace `{project}` with the `name:` field from `.lando.yml`:
 
 ```apache
 <VirtualHost *:80>
@@ -28,9 +32,7 @@ Create `.lando/apache-placeholder.conf` replacing `{project}` with the actual La
     Require all granted
   </Directory>
   RewriteEngine On
-  # PS friendly image URLs: /{id}-{type}_default/{name}.jpg (product image types only)
-  # Pattern requires "_default" suffix — matches home_default, large_default, etc.
-  # This avoids catching slider/module images that also use numeric IDs in URLs.
+  # PS friendly image URLs: /{id}-{type}_default/...
   RewriteCond /app%{REQUEST_URI} !-f
   RewriteCond %{REQUEST_URI} ^/[0-9]+-[a-z]+_default
   RewriteCond %{REQUEST_URI} \.(jpg|jpeg|png|gif|webp)$
@@ -40,15 +42,13 @@ Create `.lando/apache-placeholder.conf` replacing `{project}` with the actual La
   RewriteCond %{REQUEST_URI} ^/img/(p|c|m|st)/
   RewriteCond %{REQUEST_URI} \.(jpg|jpeg|png|gif|webp)$
   RewriteRule ^ /img/placeholder-dev.jpg [L]
-  # NOTE: /stupload/ is intentionally excluded — slider and module images live there.
+  # NOTE: /stupload/ excluded — slider/module images live there.
 </VirtualHost>
 ```
 
-**Critical**: The `RewriteCond /app%{REQUEST_URI} !-f` line checks the actual filesystem path inside the container (`/app` is the DocumentRoot inside Lando). This ensures the rule only fires for truly missing files.
+The `RewriteCond /app%{REQUEST_URI} !-f` checks the real filesystem path in the container — only fires for truly missing files.
 
-### 2. Download the placeholder image
-
-Download a visually appealing placeholder (misty mountain landscape from Unsplash) to `img/placeholder-dev.jpg`:
+### 2. Download placeholder image
 
 ```bash
 curl -L "https://images.unsplash.com/photo-1611572789411-6240f6cea970?q=80&w=500&h=500&fit=crop" -o img/placeholder-dev.jpg
@@ -56,7 +56,7 @@ curl -L "https://images.unsplash.com/photo-1611572789411-6240f6cea970?q=80&w=500
 
 ### 3. Update `.lando.yml`
 
-Add the vhosts reference under `services.appserver.config`. Read the existing `.lando.yml` first and merge — don't overwrite. The key addition:
+Add `vhosts` key under `services.appserver.config` (merge, don't overwrite):
 
 ```yaml
 services:
@@ -65,19 +65,62 @@ services:
       vhosts: .lando/apache-placeholder.conf
 ```
 
-If `services.appserver` already exists, just add the `config.vhosts` key. If `.lando.yml` doesn't have a `services` section yet, add the whole block.
-
-### 4. Rebuild Lando
+### 4. Rebuild
 
 ```bash
 lando rebuild -y
 ```
 
-This restarts the appserver with the new Apache config. Takes ~1-2 minutes.
+---
 
-## Verification
+## nginx path (recipe: lemp)
 
-After rebuild, test that a missing image returns the placeholder:
+Placeholder rules go **directly into `.lando/nginx-site.conf`** — no separate file needed. If `nginx-site.conf` already exists (standard PS9 setup), just add the location blocks. If it doesn't exist, create it.
+
+### 1. Add/verify placeholder blocks in `.lando/nginx-site.conf`
+
+These two `location` blocks must appear **before** the main `location /` block:
+
+```nginx
+# Placeholder — friendly URLs: /{id}-{type}_default/...
+location ~* ^/[0-9]+-[a-z]+_default.*\.(jpg|jpeg|png|gif|webp)$ {
+    try_files $uri /img/placeholder-dev.jpg;
+}
+
+# Placeholder — classic PS paths: /img/p/, /img/c/, /img/m/, /img/st/
+location ~* ^/img/(p|c|m|st)/.*\.(jpg|jpeg|png|gif|webp)$ {
+    try_files $uri /img/placeholder-dev.jpg;
+}
+```
+
+If `nginx-site.conf` doesn't exist yet, use the full PS9 template from lando-setup skill Step 9 — it already includes these blocks.
+
+### 2. Download placeholder image
+
+```bash
+curl -L "https://images.unsplash.com/photo-1611572789411-6240f6cea970?q=80&w=500&h=500&fit=crop" -o img/placeholder-dev.jpg
+```
+
+### 3. `.lando.yml` must reference the nginx config
+
+```yaml
+services:
+  appserver:
+    config:
+      vhosts: .lando/nginx-site.conf
+```
+
+If already set, no change needed.
+
+### 4. Rebuild
+
+```bash
+lando rebuild -y
+```
+
+---
+
+## Verification (both paths)
 
 ```bash
 curl -I "http://{project}.lndo.site/img/p/1/test.jpg"
@@ -86,9 +129,6 @@ curl -I "http://{project}.lndo.site/img/p/1/test.jpg"
 
 ## Notes
 
-- The placeholder image is a real static JPEG — no PHP involved. This avoids conflicts with PrestaShop's `.htaccess` rewrite rules.
-- The VirtualHost wrapping is required. A bare `<Directory>` block without `<VirtualHost>` causes 403 errors on the entire site.
-- `/img/st/` covers the store thumbnail path used by some PS versions.
-- The friendly URL pattern `/[0-9]+-[a-z]+_default` (no trailing slash) is intentionally strict but broad enough to also cover retina variants like `home_default_2x` — PrestaShop image types always end in `_default` (home_default, large_default, etc.). This avoids matching slider/module URLs that use numeric IDs but aren't product images.
-- `/stupload/` is excluded — sliders and modules store images there and they exist on disk, but intercepting it breaks slider images.
-- `.lando.yml` is typically gitignored in PS projects — safe to modify locally without committing.
+- `/stupload/` is excluded in both paths — sliders/modules store images there.
+- `try_files $uri /img/placeholder-dev.jpg` in nginx only fires if the file doesn't exist (nginx `try_files` checks real disk).
+- `.lando.yml` is typically gitignored in PS projects — safe to modify locally.
