@@ -6,7 +6,8 @@ description: >
   a Cinetic company project on GitLab.com Free tier. Triggers when the user asks
   to add dependency scanning, vulnerability alerts, security setup, Trivy, pnpm
   supply chain protection, or wants email reports of vulnerabilities. Do NOT use
-  for GitHub-hosted projects, personal projects, or PrestaShop (ps8-paudiet).
+  for GitHub-hosted projects, personal projects, or PrestaShop projects — use
+  ps-security-audit skill instead for any PrestaShop project.
 version: "0.1.0"
 ---
 
