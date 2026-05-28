@@ -1,0 +1,23 @@
+{
+  "skill_name": "ps-email-preview",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Oye, vamos a empezar a rediseñar los emails de PrestaShop. Antes de tocar nada necesito ver cómo están ahora mismo todos los templates. Monta algo para poder verlos.",
+      "expected_output": "Genera email-preview.php en la raíz del proyecto PS con el viewer completo. Detecta child theme, idioma y URL Lando. Crea themes/{child}/mails/{lang}/. Comunica URL de acceso.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "¿Dónde tengo que poner los templates de email personalizados en mi proyecto PrestaShop? Tengo un child theme llamado 'mistore' y quiero sobrescribir el order_conf.html",
+      "expected_output": "Explica la jerarquía (child > parent > core), crea la carpeta themes/mistore/mails/es/ si no existe, y genera el viewer para poder previsualizar los cambios.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Quiero un email preview viewer para este proyecto de prestashop, algo parecido al que tiene José en su web de diseño donde puedes ver todos los emails con datos reales",
+      "expected_output": "Genera email-preview.php completo con sidebar, iframe, botón 'Datos reales', variables resaltadas y dots de color según source.",
+      "files": []
+    }
+  ]
+}
